@@ -32,8 +32,7 @@ void showLocked()
 
 void showBand()
 {
-    lcd.setCursor(0, 0);
-    lcd.send_string("Mode: ");
+    lcd.setCursor(0, 1);
     lcd.send_string(bandNames[tmpBand]);
 }
 
@@ -43,9 +42,9 @@ void showVolume()
 
     Serial.print("Volume = ");
     Serial.println(tmpVolume);
-      
-    clearLine(0);
-    sprintf(volStr, "Volume: %d", tmpVolume);
+
+    clearLine(1);
+    sprintf(volStr, "%d", tmpVolume);
     lcd.send_string(volStr);
 }
 

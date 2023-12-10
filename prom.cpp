@@ -6,18 +6,19 @@
 #include "types.h"
 #include "prom.h"
 
+//#define __SIMULATE_PROM
 #ifdef __SIMULATE_PROM
 
 #define PROMSIZE 512
 unsigned char rawProm[PROMSIZE];
-
 #else
 
 #define PROMSIZE         8192
 #define PROMDUMPSIZE      256  // limit for serial diags..
-#define PROM_I2C_ADDRESS 0x50
 
 #endif
+
+#define PROM_I2C_ADDRESS 0x50
 
 extern PROMTYPE promData;
 extern unsigned long int writePromMs;
@@ -28,6 +29,59 @@ extern unsigned long int writePromMs;
 // As the PROM wears and writes fail, the address is increased by the size of a PROM data structure
 // to point to a "new" area in the device which is used until it fails and the process repeats
 // 
+
+unsigned char promRead(unsigned int addr)
+{
+   Wire.beginTransmission(PROM_I2C_ADDRESS);
+ 
+   Wire.write((int)(addr >> 8));   // MSB
+   Wire.write((int)(addr & 0xFF)); // LSB
+ 
+   Wire.endTransmission();
+ 
+   Wire.requestFrom(PROM_I2C_ADDRESS, 1);
+ 
+   return Wire.read();
+}
+
+boolean promWrite(unsigned int addr, unsigned char b)
+{
+        Wire.beginTransmission(PROM_I2C_ADDRESS);
+ 
+        Wire.write((int)(addr >> 8));   // MSB
+        Wire.write((int)(addr & 0xFF)); // LSB
+
+        Wire.write(b);
+ 
+        Wire.endTransmission();
+
+        delay(5);
+
+        if(promRead(addr) == b)
+        {
+            return true;
+        }
+        else
+        {
+            Serial.print("Write failed at 0x");
+            Serial.println(addr, HEX);
+            
+            return false;
+        }
+}
+
+void promTest()
+{
+
+    promWrite(0x100, 0);
+    promWrite(0x101, 2);
+
+    Serial.print("100 - ");
+    Serial.println(promRead(0x100), HEX);
+
+    Serial.print("101 - ");
+    Serial.println(promRead(0x101), HEX);
+}
 
 unsigned char readPromByte(unsigned int addr)
 {
@@ -235,6 +289,8 @@ void eraseProm()
 void loadPromDefaults()
 {
     Serial.println("Loading PROM defaults");
+
+    // eraseProm();
     
     // Load data structure with default values
     promData.fIndex = DEFAULT_DAB_FREQ;
@@ -246,6 +302,10 @@ void loadPromDefaults()
 
     promData.volume = DEFAULT_VOLUME;
 
+    promData.redLevel = DEFAULT_RED;
+    promData.greenLevel = DEFAULT_GREEN;
+    promData.blueLevel = DEFAULT_BLUE;
+
     // Initialise data start address in PROM
     writePromWord(0, 2);
 
@@ -256,7 +316,6 @@ void loadPromDefaults()
 void clearProm()
 {
     loadPromDefaults();
-//    eraseProm();
 }
 
 void readProm()

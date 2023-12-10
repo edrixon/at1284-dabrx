@@ -9,7 +9,10 @@ enum STATEID
     STATE_SELENSEMBLE,
     STATE_SHOWTIME,
     STATE_CLEARPROM,
-    STATE_SETBAND
+    STATE_SETBAND,
+    STATE_SELRED,
+    STATE_SELGREEN,
+    STATE_SELBLUE
 };
 
 enum BAND { BAND_DAB, BAND_FM };
@@ -22,6 +25,9 @@ typedef struct
     unsigned int fmFreq;
     BAND band;
     boolean locked;
+    unsigned char redLevel;
+    unsigned char greenLevel;
+    unsigned char blueLevel;
     unsigned char cSum;
 } PROMTYPE;
 
