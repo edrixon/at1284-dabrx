@@ -75,7 +75,8 @@ void showService()
         sprintf(srvTxt, "%16s", Dab.service[serviceIndex].Label);
     }
     
-    clearLine(1);
+//    clearLine(1);
+    lcd.setCursor(0, 1);
     lcd.send_string(srvTxt);
 }       
 

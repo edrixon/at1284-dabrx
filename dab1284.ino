@@ -168,6 +168,21 @@ void resetStateTimeout()
     curState.lastMs = millis();
 }
 
+boolean encoderTurned()
+{
+    boolean rtn;
+
+    rtn = false;
+    if(encClk == true)
+    {
+        resetStateTimeout();
+        encClk = false;
+        rtn = true;
+    }
+
+    return rtn;
+}
+
 boolean buttonPressed()
 {
     boolean rtn;
@@ -347,10 +362,8 @@ void selColourAction()
 {
     char clrMsg[32];
     
-    if(encClk == true)
+    if(encoderTurned() == true)
     {
-        resetStateTimeout();
-        encClk = false;
         if(encUp == true)
         {
             if(*colourAddr < 255)
@@ -400,10 +413,8 @@ void selMenuExit()
 
 void selMenuAction()
 {
-    if(encClk == true)
+    if(encoderTurned() == true)
     {
-        encClk = false;
-        resetStateTimeout();
         if(encUp == true)
         {
             menuStateId++;
@@ -460,10 +471,8 @@ void selVolumeExit()
 
 void selVolumeAction()
 {
-    if(encClk == true)
+    if(encoderTurned() == true)
     {
-        encClk = false;
-        resetStateTimeout();
         if(encUp == true)
         {
             if(tmpVolume < MAX_VOLUME)
@@ -503,11 +512,8 @@ void selFmFrequencyExit()
 
 void selFmFrequencyAction()
 { 
-    if(encClk == true)
+    if(encoderTurned() == true)
     {
-        encClk = false;
-        resetStateTimeout();
-
         if(encUp == true)
         {
             promData.fmFreq = promData.fmFreq + fmStep;
@@ -751,11 +757,8 @@ void selFreqAction()
     }
     else
     {
-        if(encClk == true)
+        if(encoderTurned() == true)
         {
-            encClk = false;
-            resetStateTimeout();
-
             if(encUp == true)
             {
                 tmpFreqIndex++;
@@ -953,10 +956,8 @@ void selEnsembleAction()
 {
     if(ensemblesFound > 0)
     {
-        if(encClk == true)
+        if(encoderTurned() == true)
         {
-            encClk = false;
-            
             Serial.print("From ");
             Serial.println(tmpFreqIndex);
             
@@ -1096,10 +1097,8 @@ void setBandExit()
 
 void setBandAction()
 {
-    if(encClk == true)
+    if(encoderTurned() == true)
     {
-        encClk = false;
-        resetStateTimeout();
         if(encUp == true)
         {
             tmpBand = tmpBand + 1;
