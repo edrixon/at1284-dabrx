@@ -17,6 +17,35 @@ extern char *bandNames[];
 extern BAND tmpBand;
 extern boolean locked;
 
+
+void showSignal()
+{
+    char sigInfoTxt[17];
+    int rssi;
+    int snr;
+    int c;
+
+    snr = map(Dab.snr, 0, 20, 0, 16);
+    for(c = 0; c < snr; c++)
+    {
+          sigInfoTxt[c] = SNR_CHR;
+    }
+
+    while(c < 16)
+    {
+        sigInfoTxt[c] = ' ';
+        c++;
+    }
+
+    rssi = map(Dab.signalstrength, 0, 63, 0, 16);
+    sigInfoTxt[rssi] = RSSI_CHR;
+
+    sigInfoTxt[16] = '\0';
+
+    lcd.setCursor(0, 0);
+    lcd.send_string(sigInfoTxt);
+}    
+
 void showLocked()
 {
     lcd.setCursor(15, 0);
@@ -98,8 +127,8 @@ void showFmFrequency(int line)
 
     kHz = (unsigned long int)promData.fmFreq * 10;
 
-    sprintf(freqTxt, "%d.%03d MHz", (unsigned int)(kHz / 1000), (unsigned int)(kHz % 1000));
-    clearLine(line);
+    sprintf(freqTxt, "FM %d.%03d MHz ", (unsigned int)(kHz / 1000), (unsigned int)(kHz % 1000));
+    lcd.setCursor(0, 1);
     lcd.send_string(freqTxt);
     Serial.println(freqTxt);
 
@@ -115,8 +144,8 @@ void showFrequency(unsigned char f, int line)
     char freqTxt[17];
 
     kHz = Dab.freq_khz(f);
-    sprintf(freqTxt, "%d%c %d.%03d MHz", ((f / 4) + 5), ((f % 4) + 65), (unsigned int)(kHz / 1000), (unsigned int)(kHz % 1000));
-    clearLine(line);
+    sprintf(freqTxt, "%d%c %d.%03d MHz ", ((f / 4) + 5), ((f % 4) + 65), (unsigned int)(kHz / 1000), (unsigned int)(kHz % 1000));
+    lcd.setCursor(0, line);
     lcd.send_string(freqTxt);
 
     if(line == 0)

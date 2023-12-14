@@ -133,6 +133,7 @@ unsigned char *colourAddr;
 int fmMax;
 int fmMin;
 int fmStep;
+boolean topLineCleared;
 
 // Variables set in interrupt handlers 
 volatile boolean encUp;
@@ -315,6 +316,7 @@ void enterState(STATEID stateId)
     encClk = false;
     encButton = false;  
 
+    setLcdColour();
     lcd.clear();
     
     curState.stateDef -> enterFn();
@@ -501,9 +503,8 @@ void selVolumeAction()
 
 void selFmFrequencyEnter()
 {
-    //               1234567890123456
-    lcd.send_string(" >> FM mode <<  ");
     showFmFrequency(1);
+    topLineCleared = false;
 }
 
 void selFmFrequencyExit()
@@ -511,7 +512,7 @@ void selFmFrequencyExit()
 }
 
 void selFmFrequencyAction()
-{ 
+{
     if(encoderTurned() == true)
     {
         if(encUp == true)
@@ -534,10 +535,21 @@ void selFmFrequencyAction()
             }
         }
 
+        if(topLineCleared == false)
+        {
+            topLineCleared = true;
+            clearLine(0);
+        }
+        
         showFmFrequency(1);
         Dab.tune(promData.fmFreq);
         savePromData();
     }
+    else
+    {
+        topLineCleared = false;
+        showSignal();
+    }  
 }
 
 void selServiceEnter()
@@ -675,15 +687,15 @@ void selFreqEnter()
 {
     Serial.println("Select frequency");
 
-    lcd.setCursor(0, 0);
-    lcd.send_string("Tune:-");
-
     if(promData.band == BAND_FM)
     {
-        selFmFrequencyEnter();
+        changeState(STATE_SELSERVICE);
     }
     else
     {
+        lcd.setCursor(0, 0);
+        lcd.send_string("Tune:-");
+
         tmpFreqIndex = promData.fIndex;
         showFrequency(tmpFreqIndex, 1);
     }
@@ -693,7 +705,7 @@ void selFreqExit()
 {
     int c;
     char srvMsg[32];
-    
+
     if(promData.band == BAND_FM)
     {
         selFmFrequencyExit();
@@ -703,86 +715,77 @@ void selFreqExit()
         if(promData.fIndex != tmpFreqIndex)
         {
             promData.fIndex = tmpFreqIndex;
-
-            setFrequency();
-
-            if(Dab.servicevalid() == true)
-            {
-                serviceIndex = 0;
-                do
-                {
-                    Dab.set_service(serviceIndex);
-                    Dab.status();
-                    if(Dab.type == SERVICE_DATA)
-                    {
-                        serviceIndex++;
-                    }
-                }
-                while(Dab.type == SERVICE_DATA);
-
-            }
-            else
-            {
-                serviceIndex = VALUE_INVALID;
-                Serial.println("No DAB service!");
-            }
-
             savePromData();
         }
 
-        Serial.print("Ensemble name - ");
-        Serial.println(Dab.Ensemble);
+        setFrequency();
 
-        sprintf(srvMsg, "Found %d services\n", Dab.numberofservices);                
-        Serial.print(srvMsg);
-
-        //              1--0x1234--1234567890123456
-        Serial.println("   SID     Name");
-        Serial.println("-----------------------------");
-        for(c = 0; c < Dab.numberofservices; c++)
+        if(Dab.servicevalid() == true)
         {
-            sprintf(srvMsg, "%d  0x%04lx  %s\n", c, Dab.service[c].ServiceID, Dab.service[c].Label);
-            Serial.print(srvMsg);
-        }
-        Serial.println("");
+            serviceIndex = 0;
+            do
+            {
+                Dab.set_service(serviceIndex);
+                Dab.status();
+                if(Dab.type == SERVICE_DATA)
+                {
+                    serviceIndex++;
+                }
+            }
+            while(Dab.type == SERVICE_DATA);
 
+            Serial.print("Ensemble name - ");
+            Serial.println(Dab.Ensemble);
+
+            sprintf(srvMsg, "Found %d services\n", Dab.numberofservices);                
+            Serial.print(srvMsg);
+
+            //              1--0x1234--1234567890123456
+            Serial.println("   SID     Name");
+            Serial.println("-----------------------------");
+            for(c = 0; c < Dab.numberofservices; c++)
+            {
+                sprintf(srvMsg, "%d  0x%04lx  %s\n", c, Dab.service[c].ServiceID, Dab.service[c].Label);
+                Serial.print(srvMsg);
+            }
+        }
+        else
+        {
+            serviceIndex = VALUE_INVALID;
+            Serial.println("No DAB service!");
+        }
+        
+        Serial.println("");
     }
 }
 
 void selFreqAction()
 {
-    if(promData.band == BAND_FM)
+    if(encoderTurned() == true)
     {
-        selFmFrequencyAction();
-    }
-    else
-    {
-        if(encoderTurned() == true)
+        if(encUp == true)
         {
-            if(encUp == true)
+            tmpFreqIndex++;
+            if(tmpFreqIndex == DAB_FREQS)
             {
-                tmpFreqIndex++;
-                if(tmpFreqIndex == DAB_FREQS)
-                {
-                    tmpFreqIndex = 0; 
-                }
+                tmpFreqIndex = 0; 
+            }
+        }
+        else
+        {
+            if(tmpFreqIndex > 0)
+            {
+                tmpFreqIndex--;
             }
             else
             {
-                if(tmpFreqIndex > 0)
-                {
-                    tmpFreqIndex--;
-                }
-                else
-                {
-                    tmpFreqIndex = DAB_FREQS - 1;
-                }
+                tmpFreqIndex = DAB_FREQS - 1;
             }
-
-            showFrequency(tmpFreqIndex, 1);
         }
+
+        showFrequency(tmpFreqIndex, 1);
     }
-        
+
     if(buttonPressed() == true)
     {
         changeState(STATE_SHOWSTATUS);
@@ -792,7 +795,14 @@ void selFreqAction()
 void showStatusEnter()
 {
     Serial.println("Show status");
-    showEnsemble(); 
+    if(promData.band == BAND_DAB)
+    {
+        showEnsemble();
+    }
+    else
+    {
+        showFmFrequency(1);
+    }
 }
 
 void showStatusExit()
@@ -801,31 +811,8 @@ void showStatusExit()
 
 void showStatusAction()
 {
-    char sigInfoTxt[17];
-    int rssi;
-    int snr;
-    int c;
+    showSignal();
 
-    snr = map(Dab.snr, 0, 20, 0, 16);
-    for(c = 0; c < snr; c++)
-    {
-          sigInfoTxt[c] = SNR_CHR;
-    }
-
-    while(c < 16)
-    {
-        sigInfoTxt[c] = ' ';
-        c++;
-    }
-
-    rssi = map(Dab.signalstrength, 0, 63, 0, 16);
-    sigInfoTxt[rssi] = RSSI_CHR;
-
-    sigInfoTxt[16] = '\0';
-
-    lcd.setCursor(0, 0);
-    lcd.send_string(sigInfoTxt);
-    
     if(buttonPressed() == true)
     {
         changeState(STATE_SELSERVICE);

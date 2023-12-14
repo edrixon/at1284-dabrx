@@ -6,3 +6,4 @@ void showFrequency(unsigned char f, int line);
 void showEnsemble();
 void showBand();
 void showLocked();
+void showSignal();
