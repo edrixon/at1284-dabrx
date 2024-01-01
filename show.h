@@ -7,3 +7,5 @@ void showEnsemble();
 void showBand();
 void showLocked();
 void showSignal();
+void showTxState();
+void showTxFreq();

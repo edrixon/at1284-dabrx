@@ -306,6 +306,9 @@ void loadPromDefaults()
     promData.greenLevel = DEFAULT_GREEN;
     promData.blueLevel = DEFAULT_BLUE;
 
+    promData.txFreq = DEFAULT_TXFREQ;
+    promData.txState = DEFAULT_TXSTATE;
+
     // Initialise data start address in PROM
     writePromWord(0, 2);
 
@@ -368,6 +371,14 @@ void readProm()
             Serial.println("PROM data is valid");
         }
     }
+}
+
+void resetPromWriteTimer()
+{
+    if(writePromMs != 0)
+    {
+        writePromMs = millis(); 
+    } 
 }
 
 void savePromData()

@@ -16,7 +16,8 @@ extern int serviceIndex;
 extern char *bandNames[];
 extern BAND tmpBand;
 extern boolean locked;
-
+extern boolean tmpTxState;
+extern int tmpTxFreq;
 
 void showSignal()
 {
@@ -79,7 +80,7 @@ void showVolume()
 
 void showService()
 {
-    char srvTxt[17];
+    char srvTxt[64];
 
     if(serviceIndex == VALUE_INVALID)
     {
@@ -89,22 +90,17 @@ void showService()
     else
     {
         Dab.status();
-        
-        Serial.print(serviceIndex);
-        Serial.print(" - ");
-        Serial.print(promData.serviceId, HEX);
-        Serial.print(" - ");
-        Serial.println(Dab.service[serviceIndex].Label);
 
-        Serial.print("Service type - ");
-        Serial.print(Dab.type);
-        Serial.print(" - ");
-        Serial.println(serviceTypes[Dab.type]);
+        sprintf(srvTxt, "Service type - %d - %s\n", Dab.type, serviceTypes[Dab.type]);
+        Serial.print(srvTxt);
+        
+        sprintf(srvTxt, "%d - 0x%04lx - 0x%04lx - ", serviceIndex, promData.serviceId, Dab.service[serviceIndex].CompID);
+        Serial.print(srvTxt);
 
         sprintf(srvTxt, "%16s", Dab.service[serviceIndex].Label);
+        Serial.println(srvTxt);
     }
     
-//    clearLine(1);
     lcd.setCursor(0, 1);
     lcd.send_string(srvTxt);
 }       
@@ -172,4 +168,32 @@ void showEnsemble()
 
     lcd.setCursor(0, 1);
     lcd.send_string(ensembleTxt);
+}
+
+void showTxState()
+{
+    lcd.setCursor(0, 1);
+    if(tmpTxState == true)
+    {
+        Serial.println("Transmitter ON");
+        lcd.send_string("ON ");
+    }
+    else
+    {
+        Serial.println("Transmitter OFF");
+        lcd.send_string("OFF");      
+    }
+}
+
+void showTxFreq()
+{
+    char freqTxt[17];
+    unsigned long int
+    
+    kHz = (unsigned long int)tmpTxFreq * 10;
+
+    sprintf(freqTxt, "%d.%03d MHz ", (unsigned int)(kHz / 1000), (unsigned int)(kHz % 1000));
+    lcd.setCursor(0, 1);
+    lcd.send_string(freqTxt);
+    Serial.println(freqTxt);
 }

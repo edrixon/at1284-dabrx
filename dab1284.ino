@@ -6,11 +6,14 @@
 #include <Wire.h>
 #include "Waveshare_LCD1602_RGB.h"
 
+#include "dab1284.h"
 #include "types.h"
 #include "pins.h"
 #include "show.h"
-#include "dab1284.h"
 #include "prom.h"
+#include "fmtx.h"
+#include "si4684.h"
+#include "si4713.h"
 
 void selColourEnter();
 void selColourExit();
@@ -45,6 +48,12 @@ void clearPromAction();
 void setBandEnter();
 void setBandExit();
 void setBandAction();
+void setFmTxEnter();
+void setFmTxExit();
+void setFmTxAction();
+void setFmTxFreqEnter();
+void setFmTxFreqExit();
+void setFmTxFreqAction();
 
 STATEDEF stateDefs[] =
 {
@@ -61,6 +70,8 @@ STATEDEF stateDefs[] =
     { selColourEnter, selColourExit, selColourAction, 10, STATE_SELSERVICE },
     { selColourEnter, selColourExit, selColourAction, 10, STATE_SELSERVICE },
     { selColourEnter, selColourExit, selColourAction, 10, STATE_SELSERVICE },
+    { setFmTxEnter, setFmTxExit, setFmTxAction, 10, STATE_SELSERVICE },
+    { setFmTxFreqEnter, setFmTxFreqExit, setFmTxFreqAction, 10, STATE_SELSERVICE },
 };
 
 char *menuItems[] =
@@ -73,6 +84,8 @@ char *menuItems[] =
     "[Set red       ]",
     "[Set green     ]",
     "[Set blue      ]",
+    "[TX frequency  ]",
+    "[FM transmitter]",
     "[Find ensembles]",
     "[Clear settings]",
     "[Show DAB time ]",
@@ -80,7 +93,7 @@ char *menuItems[] =
     "[Exit menu     ]"
 };
 
-int numMenuItems = 12;
+int numMenuItems = 14;
 STATEID menuStates[] = 
 {
     STATE_SELFREQ,
@@ -90,6 +103,8 @@ STATEID menuStates[] =
     STATE_SELRED,
     STATE_SELGREEN,
     STATE_SELBLUE,
+    STATE_SETFMTXFREQ,
+    STATE_SETFMTX,
     STATE_FINDENSEMBLES,
     STATE_CLEARPROM,
     STATE_SHOWTIME, 
@@ -134,11 +149,28 @@ int fmMax;
 int fmMin;
 int fmStep;
 boolean topLineCleared;
+boolean ledState;
+int tmpTxFreq;
+int tmpTxState;
 
 // Variables set in interrupt handlers 
 volatile boolean encUp;
 volatile boolean encClk;
 volatile boolean encButton;
+
+void doLed()
+{
+    if(ledState == true)
+    {
+        ledState = false;
+        digitalWrite(__LED_PIN, LED_OFF);
+    }
+    else
+    {
+        ledState = true;
+        digitalWrite(__LED_PIN, LED_ON);
+    }
+}
 
 // Interrupt when the encoder push button is pressed
 void encButtonInterruptHandler()
@@ -177,6 +209,7 @@ boolean encoderTurned()
     if(encClk == true)
     {
         resetStateTimeout();
+        resetPromWriteTimer();
         encClk = false;
         rtn = true;
     }
@@ -273,6 +306,22 @@ boolean setFrequency()
     return Dab.servicevalid();
 }
 
+void startDabService()
+{
+    char txtBuff[64];
+    char shortLabel[32];
+    DABService *srv;
+    
+    Dab.set_service(serviceIndex);
+    Dab.status();
+
+    srv = &(Dab.service[serviceIndex]);
+
+    dabGetShortLabel(srv -> ServiceID, shortLabel);
+    txSetRDSstationName(shortLabel);
+    txSetRDSpiCode((unsigned short int)((srv -> ServiceID) & 0xffff));
+}
+
 boolean setService()
 {
     serviceIndex = 0;
@@ -289,7 +338,7 @@ boolean setService()
     }
     else
     {
-        Dab.set_service(serviceIndex);
+        startDabService();
     }
 }
 
@@ -391,6 +440,100 @@ void selColourAction()
         Serial.println(clrMsg);
         
         savePromData();
+    }
+
+    if(buttonPressed() == true)
+    {
+        changeState(STATE_SELSERVICE);
+    }
+}
+
+void setFmTxEnter()
+{
+    Serial.println("FM transmitter");
+    
+//                   1234567890123456
+    lcd.send_string("Transmitter:-   ");
+    tmpTxState = promData.txState;
+    showTxState();
+}
+
+void setFmTxExit()
+{
+    if(tmpTxState != promData.txState)
+    {
+        txOn(tmpTxState);
+        promData.txState = tmpTxState;
+        savePromData();
+    }
+}
+
+void setFmTxAction()
+{
+    if(encoderTurned() == true)
+    {
+        if(tmpTxState == true)
+        {
+            tmpTxState = false;
+        }
+        else
+        {
+            tmpTxState = true;
+        }
+        showTxState();
+    }
+
+    if(buttonPressed() == true)
+    {
+        changeState(STATE_SELSERVICE);
+    }    
+}
+
+void setFmTxFreqEnter()
+{
+    Serial.println("Set transmit frequency");
+  
+//                   1234567890123456
+    lcd.send_string("TX frequency:-  ");
+    tmpTxFreq = promData.txFreq;
+    showTxFreq();  
+}
+
+void setFmTxFreqExit()
+{
+    if(tmpTxFreq != promData.txFreq)
+    {
+        txSetFreq(tmpTxFreq);
+        promData.txFreq = tmpTxFreq;
+        savePromData();
+    }
+}
+
+void setFmTxFreqAction()
+{
+    if(encoderTurned() == true)
+    {
+        if(encUp == true)
+        {
+            tmpTxFreq = tmpTxFreq + fmStep;
+            if(tmpTxFreq > fmMax)
+            {
+                tmpTxFreq = fmMin; 
+            }
+        }
+        else
+        {
+            if(tmpTxFreq > fmMin)
+            {
+                tmpTxFreq = tmpTxFreq - fmStep;
+            }
+            else
+            {
+                tmpTxFreq = fmMax;
+            }
+        }
+
+        showTxFreq();
     }
 
     if(buttonPressed() == true)
@@ -606,8 +749,7 @@ void selServiceAction()
                 }
 
                 promData.serviceId = Dab.service[serviceIndex].ServiceID;
-                Dab.set_service(serviceIndex);
-                Dab.status();
+                startDabService();
             }
             while(Dab.type == SERVICE_DATA);
 
@@ -725,8 +867,7 @@ void selFreqExit()
             serviceIndex = 0;
             do
             {
-                Dab.set_service(serviceIndex);
-                Dab.status();
+                startDabService();
                 if(Dab.type == SERVICE_DATA)
                 {
                     serviceIndex++;
@@ -843,8 +984,7 @@ void findEnsemblesExit()
         serviceIndex = 0;
         do
         {
-            Dab.set_service(serviceIndex);
-            Dab.status();
+            startDabService();
             if(Dab.type == SERVICE_DATA)
             {
                 serviceIndex++;
@@ -927,8 +1067,7 @@ void selEnsembleExit()
         {
             do
             {
-                Dab.set_service(serviceIndex);
-                Dab.status();
+                startDabService();
                 if(Dab.type == SERVICE_DATA)
                 {
                     serviceIndex++;
@@ -1057,14 +1196,17 @@ void showTimeAction()
 
 void setBandEnter()
 {
+#ifdef __ENABLE_FMRX
     Serial.print("Set band");
     tmpBand = promData.band;
     lcd.send_string("Mode:-");
     showBand();
+#endif
 }
 
 void setBandExit()
 {
+#ifdef __ENABLE_FMRX
     if(tmpBand != promData.band)
     {
         promData.band = tmpBand;
@@ -1080,10 +1222,12 @@ void setBandExit()
             setService();
         }
     }
+#endif
 }
 
 void setBandAction()
 {
+#ifdef __ENABLE_FMRX
     if(encoderTurned() == true)
     {
         if(encUp == true)
@@ -1114,6 +1258,9 @@ void setBandAction()
     {
         changeState(STATE_SELSERVICE);
     }
+#else
+    changeState(STATE_SELSERVICE);
+#endif
 }
 
 void setup()
@@ -1121,11 +1268,14 @@ void setup()
     Serial.begin(9600);
     Serial.print("\n\n\n\n\n\n");
     Serial.println("ATmega1284P DAB receiver\n\n");
-
+    
     // Calls Wire.begin() so needs to be before any use of I2C PROM!
     lcd.init();
 
     readProm();
+#ifndef __ENABLE_FMRX
+    promData.band = BAND_DAB;
+#endif
 
     setLcdColour();
     lcd.send_string("Starting...");
@@ -1146,13 +1296,15 @@ void setup()
         hwError("No receiver!");
     }
 
-    Serial.print("Found Si");
+    Serial.print("Found DAB receiver Si");
     Serial.println(Dab.PartNo);
 
     Serial.print("Using DABShield library version ");
     Serial.print(Dab.LibMajor);
     Serial.print(".");
     Serial.println(Dab.LibMinor);
+
+    txSetup();
 
     Dab.vol(promData.volume);
 
@@ -1185,6 +1337,8 @@ void setup()
     pinMode(__ENCCLK_PIN, INPUT);
     enableInterrupt(__ENCCLK_PIN, encInterruptHandler, FALLING);
 
+    pinMode(__LED_PIN, OUTPUT);
+
     enterState(STATE_SELSERVICE);
 }
 
@@ -1196,9 +1350,13 @@ void loop()
 
     Dab.status();
 
+    txLoop();
+
     curState.stateDef -> actionFn();
 
     delay(TICKTIME);
+
+    doLed();
 
     nowMs = millis();
 

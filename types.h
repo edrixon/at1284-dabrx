@@ -12,7 +12,9 @@ enum STATEID
     STATE_SETBAND,
     STATE_SELRED,
     STATE_SELGREEN,
-    STATE_SELBLUE
+    STATE_SELBLUE,
+    STATE_SETFMTX,
+    STATE_SETFMTXFREQ
 };
 
 enum BAND { BAND_DAB, BAND_FM };
@@ -21,13 +23,15 @@ typedef struct
 { 
     unsigned char fIndex; 
     unsigned char volume;
-    unsigned short int serviceId;
+    unsigned long int serviceId;
     unsigned int fmFreq;
     BAND band;
     boolean locked;
     unsigned char redLevel;
     unsigned char greenLevel;
     unsigned char blueLevel;
+    unsigned int txFreq;
+    boolean txState;
     unsigned char cSum;
 } PROMTYPE;
 

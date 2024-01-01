@@ -1,4 +1,9 @@
 void clearLine(int ln);
+void hwError(char *str);
+void DABSpiMsg(unsigned char *data, uint32_t len);
+
+//#define __HARDWARE_V10
+#define __HARDWARE_V11
 
 #define VALUE_INVALID         -1
 
@@ -30,6 +35,8 @@ void clearLine(int ln);
 #define DEFAULT_RED           255       // Red level in backlight
 #define DEFAULT_GREEN         255       // Green level
 #define DEFAULT_BLUE          0         // Blue level
+#define DEFAULT_TXFREQ        8750      // 87.5 MHz
+#define DEFAULT_TXSTATE       true      // Transmitter enabled
 
 // Custom LCD characters
 #define LOCK_CHR              0
@@ -39,3 +46,10 @@ void clearLine(int ln);
 
 // Value of "quality" which causes "low signal" message
 #define MIN_QUALITY           5
+
+// Un-comment to enable FM band reception
+#define __ENABLE_FMRX
+
+// Values to write to turn LED on or off
+#define LED_ON               1
+#define LED_OFF              0
