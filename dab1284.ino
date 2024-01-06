@@ -310,6 +310,7 @@ void startDabService()
 {
     char txtBuff[64];
     char shortLabel[32];
+    unsigned char pty;
     DABService *srv;
     
     Dab.set_service(serviceIndex);
@@ -317,9 +318,10 @@ void startDabService()
 
     srv = &(Dab.service[serviceIndex]);
 
-    dabGetShortLabel(srv -> ServiceID, shortLabel);
+    dabGetShortLabel(srv -> ServiceID, shortLabel, &pty);
     txSetRDSstationName(shortLabel);
     txSetRDSpiCode((unsigned short int)((srv -> ServiceID) & 0xffff));
+    txSetRDSptype(pty);
 }
 
 boolean setService()

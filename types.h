@@ -17,7 +17,11 @@ enum STATEID
     STATE_SETFMTXFREQ
 };
 
-enum BAND { BAND_DAB, BAND_FM };
+enum BAND 
+{
+    BAND_DAB, 
+    BAND_FM
+};
 
 typedef struct
 { 

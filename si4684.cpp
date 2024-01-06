@@ -16,45 +16,45 @@ extern unsigned char command_error;
 
 static void si468x_responseN(int len)
 {
-  int i;
+    int i;
 
-  for (i = 0; i < len + 1; i++)
-  {
-    spiBuf[i] = 0;
-  }
+    for(i = 0; i < len + 1; i++)
+    {
+        spiBuf[i] = 0;
+    }
 
-  DABSpiMsg(spiBuf, len + 1);
+    DABSpiMsg(spiBuf, len + 1);
 }
 
 static void si468x_response(void)
 {
-  si468x_responseN(4);
+    si468x_responseN(4);
 }
 
 static void si468x_cts(void)
 {
-  uint32_t timeout;
-  command_error = 0;
-  timeout = 1000;
-  do
-  {
-    delay(4);
-    si468x_response();
-    timeout--;
-    if(timeout == 0)
+    uint32_t timeout;
+    command_error = 0;
+    timeout = 1000;
+    do
     {
-      command_error = 0x80;
-      Serial.println("Command timedout");
-      break;
+        delay(4);
+        si468x_response();
+        timeout--;
+        if(timeout == 0)
+        {
+            command_error = 0x80;
+            Serial.println("Command timedout");
+            break;
+        }
     }
-  }
-  while ((spiBuf[1] & 0x80) == 0x00);
+    while((spiBuf[1] & 0x80) == 0x00);
 
-  if ((spiBuf[1] & 0x40) == 0x40)
-  {
-    si468x_responseN(5);
-    command_error = 0x80 | spiBuf[5];
-  }
+    if((spiBuf[1] & 0x40) == 0x40)
+    {
+        si468x_responseN(5);
+        command_error = 0x80 | spiBuf[5];
+    }
 }
 
 void dumpSpiBuf(int c)
@@ -112,12 +112,14 @@ void dabGetServiceInfo(unsigned long int serviceId)
     //dumpSpiBuf(27);
 }
 
-void dabGetShortLabel(unsigned long int serviceId, char *shortLabel)
+void dabGetShortLabel(unsigned long int serviceId, char *shortLabel, unsigned char *pty)
 {
     int c;
     unsigned short int labelMask;
 
     dabGetServiceInfo(serviceId);
+
+    *pty = (spiBuf[5] >> 1) & 0x1f;
 
     labelMask = spiBuf[25] + (spiBuf[26] << 8);
 
