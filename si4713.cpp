@@ -14,9 +14,6 @@ unsigned int txGetProperty(unsigned int property)
 {
     unsigned int rtn;
     char txtBuff[64];
-
-    sprintf(txtBuff, "txGetProperty(0x%04x)\n", property);
-    Serial.print(txtBuff);
     
     Wire.beginTransmission(SI4710_ADDR1);
     Wire.write(SI4710_CMD_GET_PROPERTY);
@@ -27,15 +24,14 @@ unsigned int txGetProperty(unsigned int property)
 
     Wire.requestFrom(SI4710_ADDR1, 4);
 
+    // Read status byte
     rtn = Wire.read();
-    sprintf(txtBuff, "  Status - %02x\n", rtn);
-    Serial.print(txtBuff);
-    
-    rtn = Wire.read();
-    rtn = (Wire.read() << 8) | Wire.read();
 
-    sprintf(txtBuff, "  Value - 0x%04x\n", rtn);
-    Serial.print(txtBuff);
+    // Don't care
+    rtn = Wire.read();
+
+    // Read property value
+    rtn = (Wire.read() << 8) | Wire.read();
 
     return rtn;
 }

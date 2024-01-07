@@ -14,6 +14,7 @@
 #include "fmtx.h"
 #include "si4684.h"
 #include "si4713.h"
+#include "state.h"
 
 void selColourEnter();
 void selColourExit();
@@ -196,11 +197,6 @@ void encInterruptHandler()
     }
 }
 
-void resetStateTimeout()
-{
-    curState.lastMs = millis();
-}
-
 boolean encoderTurned()
 {
     boolean rtn;
@@ -273,111 +269,6 @@ void hwError(char *str)
 void setLcdColour()
 {
     lcd.setRGB(promData.redLevel, promData.greenLevel, promData.blueLevel);
-}
-
-void DABSpiMsg(unsigned char *data, uint32_t len)
-{
-    SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE0));
-    digitalWrite (__DABCS_PIN, LOW);
-    SPI.transfer(data, len);
-    digitalWrite (__DABCS_PIN, HIGH);
-    SPI.endTransaction();
-}
-
-void startReceiver()
-{
-    if(promData.band == BAND_FM)
-    {
-        Dab.begin(1, __DABINTERRUPT_PIN, __DABRESET_PIN, __DABPWREN_PIN);
-    }
-    else
-    {
-        Dab.begin(0, __DABINTERRUPT_PIN, __DABRESET_PIN, __DABPWREN_PIN);
-    }
-}
-
-boolean setFrequency()
-{
-    lcd.clear();
-    lcd.send_string("Tuning...");
-        
-    Dab.tune(promData.fIndex);
-
-    return Dab.servicevalid();
-}
-
-void startDabService()
-{
-    char txtBuff[64];
-    char shortLabel[32];
-    unsigned char pty;
-    DABService *srv;
-    
-    Dab.set_service(serviceIndex);
-    Dab.status();
-
-    srv = &(Dab.service[serviceIndex]);
-
-    dabGetShortLabel(srv -> ServiceID, shortLabel, &pty);
-    txSetRDSstationName(shortLabel);
-    txSetRDSpiCode((unsigned short int)((srv -> ServiceID) & 0xffff));
-    txSetRDSptype(pty);
-}
-
-boolean setService()
-{
-    serviceIndex = 0;
-    while(serviceIndex < Dab.numberofservices && Dab.service[serviceIndex].ServiceID != promData.serviceId)
-    {
-        serviceIndex++;
-    }
-
-    if(serviceIndex == Dab.numberofservices)
-    {
-        lcd.setCursor(0, 1);
-        lcd.send_string("Station gone!");
-        serviceIndex = VALUE_INVALID;
-    }
-    else
-    {
-        startDabService();
-    }
-}
-
-void processServiceData(void)
-{
-//    Serial.println(Dab.ServiceData);
-}
-
-void enterState(STATEID stateId)
-{ 
-    Serial.print("Enter state - ");
-    Serial.println(stateId);
-
-    curState.stateDef = &stateDefs[stateId];
-    
-    Serial.print("Timeout = ");
-    Serial.print(curState.stateDef -> timeoutSecs);
-    Serial.println(" seconds");    
-     
-    curState.timeoutMs = (curState.stateDef -> timeoutSecs * 1000);
-    resetStateTimeout();
-
-    delay(300);
-    encClk = false;
-    encButton = false;  
-
-    setLcdColour();
-    lcd.clear();
-    
-    curState.stateDef -> enterFn();
-}
-
-void changeState(STATEID newState)
-{
-    curState.stateDef -> exitFn();
-
-    enterState(newState);
 }
 
 void selColourEnter()
@@ -1145,6 +1036,7 @@ void selEnsembleAction()
 void clearPromEnter()
 {
     lcd.send_string("Loaded defaults"); 
+    clearProm();
 }
 
 void clearPromExit()
@@ -1153,8 +1045,6 @@ void clearPromExit()
 
 void clearPromAction()
 {
-    clearProm();
-    
     if(buttonPressed() == true)
     {
         changeState(STATE_SELSERVICE);
@@ -1286,29 +1176,8 @@ void setup()
     lcd.customSymbol(SNR_CHR, snrChrBmp);
     lcd.customSymbol(WRITE_CHR, writeChrBmp);
 
-    pinMode(__DABCS_PIN, OUTPUT);
-    digitalWrite(__DABCS_PIN, HIGH);
-    SPI.begin();
-    Dab.setCallback(processServiceData);
-    startReceiver();
-
-    if(Dab.error != 0)
-    {
-        Serial.println("Couldn't find receiver");
-        hwError("No receiver!");
-    }
-
-    Serial.print("Found DAB receiver Si");
-    Serial.println(Dab.PartNo);
-
-    Serial.print("Using DABShield library version ");
-    Serial.print(Dab.LibMajor);
-    Serial.print(".");
-    Serial.println(Dab.LibMinor);
-
+    rxSetup();
     txSetup();
-
-    Dab.vol(promData.volume);
 
     lcd.clear();
     if(promData.band == BAND_FM)
@@ -1347,11 +1216,8 @@ void setup()
 void loop()
 {
     unsigned long int nowMs;
-    
-    Dab.task();
 
-    Dab.status();
-
+    rxLoop();
     txLoop();
 
     curState.stateDef -> actionFn();

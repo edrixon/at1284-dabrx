@@ -1,6 +1,8 @@
 void clearLine(int ln);
 void hwError(char *str);
 void DABSpiMsg(unsigned char *data, uint32_t len);
+void setLcdColour();
+
 
 //#define __HARDWARE_V10
 #define __HARDWARE_V11
